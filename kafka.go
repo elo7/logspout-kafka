@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -40,7 +41,18 @@ func NewKafkaAdapter(route *router.Route) (router.LogAdapter, error) {
 	var err error
 	var tmpl *template.Template
 	if text := os.Getenv("KAFKA_TEMPLATE"); text != "" {
-		tmpl, err = template.New("kafka").Parse(text)
+		funcMap := template.FuncMap{
+				"toJSON": func(value interface{}) string {
+					bytes, err := json.Marshal(value)
+					if err != nil {
+						log.Println("error marshalling to JSON: ", err)
+						return "null"
+					}
+					return string(bytes)
+				},
+		}
+
+		tmpl, err = template.New("kafka").Funcs(funcMap).Parse(text)
 		if err != nil {
 			return nil, errorf("Couldn't parse Kafka message template. %v", err)
 		}
